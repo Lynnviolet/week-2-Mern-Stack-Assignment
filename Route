@@ -1,0 +1,72 @@
+const express = require('express');
+const { v4: uuidv4 } = require('uuid');
+const ApiError = require('../utils/ApiError');
+const { auth, validateProduct } = require('../middleware');
+
+const router = express.Router();
+
+let products = [];
+
+// GET all products with optional filtering and pagination
+router.get('/', (req, res) => {
+  let filtered = [...products];
+
+  if (req.query.category) {
+    filtered = filtered.filter(p => p.category === req.query.category);
+  }
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || filtered.length;
+  const start = (page - 1) * limit;
+  const paginated = filtered.slice(start, start + limit);
+
+  res.json(paginated);
+});
+
+// GET single product by ID
+router.get('/:id', (req, res, next) => {
+  const product = products.find(p => p.id === req.params.id);
+  if (!product) return next(new ApiError('Product not found', 404));
+  res.json(product);
+});
+
+// POST create new product
+router.post('/', auth, validateProduct, (req, res) => {
+  const newProduct = { id: uuidv4(), ...req.body };
+  products.push(newProduct);
+  res.status(201).json(newProduct);
+});
+
+// PUT update existing product
+router.put('/:id', auth, validateProduct, (req, res, next) => {
+  const index = products.findIndex(p => p.id === req.params.id);
+  if (index === -1) return next(new ApiError('Product not found', 404));
+  products[index] = { ...products[index], ...req.body };
+  res.json(products[index]);
+});
+
+// DELETE product
+router.delete('/:id', auth, (req, res, next) => {
+  const index = products.findIndex(p => p.id === req.params.id);
+  if (index === -1) return next(new ApiError('Product not found', 404));
+  const deleted = products.splice(index, 1);
+  res.json(deleted[0]);
+});
+
+// SEARCH product by name
+router.get('/search/name', (req, res) => {
+  const query = req.query.query.toLowerCase();
+  const results = products.filter(p => p.name.toLowerCase().includes(query));
+  res.json(results);
+});
+
+// GET stats by category
+router.get('/stats/category', (req, res) => {
+  const stats = {};
+  products.forEach(p => {
+    stats[p.category] = (stats[p.category] || 0) + 1;
+  });
+  res.json(stats);
+});
+
+module.exports = router;
