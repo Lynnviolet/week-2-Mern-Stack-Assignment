@@ -1,21 +1,20 @@
 const express = require('express');
 const dotenv = require('dotenv');
-const productRoutes = require('./routes/products');
-const logger = require('./middleware/logger');
-const errorHandler = require('./middleware/errorHandler');
+const { logger, errorHandler } = require('./middleware');
+const productRoutes = require('./routes/product'); 
 
 dotenv.config();
 
 const app = express();
 
-app.use(logger);      Custom logger middleware
-app.use(express.json());   JSON body parser middleware
+app.use(logger);
+app.use(express.json());
 
 app.get('/', (req, res) => res.send('Hello World'));
-
 app.use('/api/products', productRoutes);
 
-app.use(errorHandler);          Global error handler
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
